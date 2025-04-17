@@ -1,7 +1,11 @@
 [package]
 name = "my_terminal"
-version = "0.1.0"
+version = "0.0.1"
 edition = "2024"
 
 [dependencies]
 ratatui = "0.29.0"
+
+[dependencies.dictionary]
+version = "0.1.0"
+path = "./dictionary"

@@ -116,6 +116,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "dictionary"
+version = "0.1.0"
+dependencies = [
+ "ratatui",
+]
+
+[[package]]
 name = "either"
 version = "1.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -257,8 +264,9 @@ dependencies = [
 
 [[package]]
 name = "my_terminal"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
+ "dictionary",
  "ratatui",
 ]
 

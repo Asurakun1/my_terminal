@@ -1,16 +1,19 @@
-use std::{error::Error, rc::Rc};
+use dictionary::Dictionary;
+use std::error::Error;
+use std::rc::Rc;
 
 use ratatui::{
+    DefaultTerminal, Frame,
     crossterm::event::{self, Event, KeyCode, KeyEventKind},
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Style, Styled},
     widgets::{Block, Paragraph, RatatuiLogo, Wrap},
-    DefaultTerminal, Frame,
 };
 
 #[derive(PartialEq)]
 enum Menu {
     Menu,
+    Dictionary,
     Exit,
 }
 
@@ -30,12 +33,28 @@ impl App {
     }
 
     pub fn run(&mut self) -> Result<(), Box<dyn Error>> {
-        while self.app_state != Menu::Exit {
-            self.terminal.draw(|frame| {
-                render_callback(frame, self.cycle);
-            })?;
-            handle_events(self)?;
+        loop {
+            match self.app_state {
+                Menu::Menu => {
+                    self.terminal.draw(|frame| {
+                        render_callback(frame, self.cycle);
+                    })?;
+                    handle_events(self)?;
+                }
+                // Enter Dictionary Module
+                Menu::Dictionary => {
+                    self.terminal.clear()?;
+                    let terminal = ratatui::init();
+                    let mut dictionary = Dictionary::new(terminal);
+                    dictionary.run()?;
+                    self.app_state = Menu::Menu;
+                }
+                Menu::Exit => {
+                    break;
+                }
+            }
         }
+
         Ok(())
     }
 }
@@ -67,20 +86,17 @@ fn main_screen_block<'a>(layer_0: Rc<[Rect]>) -> (Block<'a>, Rc<[Rect]>) {
 fn menu_right_chunk(frame: &mut Frame, divider: Rc<[Rect]>, menu: &Block) {
     let inner_right_chunk = Layout::default()
         .direction(Direction::Vertical)
-        .constraints(
-            [
-                Constraint::Fill(10),
-                Constraint::Fill(40),
-                Constraint::Fill(10),
-            ]
-            .as_ref(),
-        )
+        .constraints([
+            Constraint::Fill(10),
+            Constraint::Fill(40),
+            Constraint::Fill(10),
+        ])
         .split(menu.inner(divider[1]));
 
-    let ctrl = Paragraph::new("Commands: \u{2191} / \u{2193} / Enter（選択）/ Q （終了）")
-        .block(Block::bordered());
+    let ctrl =
+        Paragraph::new("Commands: \u{2191} / \u{2193} / Enter（選択）").block(Block::bordered());
     let logo = RatatuiLogo::default().size(ratatui::widgets::RatatuiLogoSize::Small);
-    let block = Block::bordered();
+    let block = Paragraph::new("Ver. 0.0.1");
 
     frame.render_widget(ctrl, inner_right_chunk[0]);
     frame.render_widget(logo, inner_right_chunk[1]);
@@ -90,15 +106,12 @@ fn menu_right_chunk(frame: &mut Frame, divider: Rc<[Rect]>, menu: &Block) {
 fn menu_selection(frame: &mut Frame, menu: &Block, divider: &Rc<[Rect]>, cycle: &u8) {
     let inner_left_chunk = Layout::default()
         .direction(Direction::Vertical)
-        .constraints(
-            [
-                Constraint::Fill(10),
-                Constraint::Fill(10),
-                Constraint::Fill(10),
-                Constraint::Fill(10),
-            ]
-            .as_ref(),
-        )
+        .constraints([
+            Constraint::Fill(10),
+            Constraint::Fill(10),
+            Constraint::Fill(10),
+            Constraint::Fill(10),
+        ])
         .split(menu.inner(divider[0]));
 
     let mut item_1 = Paragraph::new("Dictionary（辞書）")
@@ -110,11 +123,9 @@ fn menu_selection(frame: &mut Frame, menu: &Block, divider: &Rc<[Rect]>, cycle: 
     let mut item_3 = Paragraph::new("でも、選択だとしても。今からは何も動いていない。")
         .block(Block::bordered())
         .wrap(Wrap { trim: true });
-    let mut item_4 = Paragraph::new(
-        "中の物にはまだ何もない。でも多分一つの選択しは自分の辞書を作るためかもしれない。",
-    )
-    .block(Block::bordered())
-    .wrap(Wrap { trim: true });
+    let mut item_4 = Paragraph::new("Exit（終了）")
+        .block(Block::bordered())
+        .wrap(Wrap { trim: true });
 
     match cycle {
         0 => {
@@ -143,7 +154,6 @@ fn chunks(chunk: Rect) -> Rc<[Rect]> {
 fn handle_events(app: &mut App) -> Result<(), Box<dyn Error>> {
     match event::read() {
         Ok(Event::Key(key)) if key.kind == KeyEventKind::Press => match key.code {
-            KeyCode::Char('q') => app.app_state = Menu::Exit,
             KeyCode::Down => {
                 if app.cycle < 3 {
                     app.cycle += 1;
@@ -159,7 +169,8 @@ fn handle_events(app: &mut App) -> Result<(), Box<dyn Error>> {
                 }
             }
             KeyCode::Enter => match app.cycle {
-                0 => {}
+                0 => app.app_state = Menu::Dictionary,
+                3 => app.app_state = Menu::Exit,
                 _ => (),
             },
             _ => (),
