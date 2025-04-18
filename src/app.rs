@@ -1,10 +1,10 @@
 use dictionary::Dictionary;
-use std::error::Error;
 use std::rc::Rc;
+use std::{error::Error, time::Duration};
 
 use ratatui::{
     DefaultTerminal, Frame,
-    crossterm::event::{self, Event, KeyCode, KeyEventKind},
+    crossterm::event::{self, Event, KeyCode, KeyEventKind, poll},
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Style, Styled},
     widgets::{Block, Paragraph, RatatuiLogo, Wrap},
@@ -43,11 +43,12 @@ impl App {
                 }
                 // Enter Dictionary Module
                 Menu::Dictionary => {
-                    self.terminal.clear()?;
-                    let terminal = ratatui::init();
-                    let mut dictionary = Dictionary::new(terminal);
+                    let mut dictionary = Dictionary::new();
                     dictionary.run()?;
+
+                    //re enter the alternate screen
                     self.app_state = Menu::Menu;
+                    self.terminal.clear()?;
                 }
                 Menu::Exit => {
                     break;
@@ -107,10 +108,10 @@ fn menu_selection(frame: &mut Frame, menu: &Block, divider: &Rc<[Rect]>, cycle: 
     let inner_left_chunk = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Fill(10),
-            Constraint::Fill(10),
-            Constraint::Fill(10),
-            Constraint::Fill(10),
+            Constraint::Max(3),
+            Constraint::Max(3),
+            Constraint::Max(3),
+            Constraint::Max(3),
         ])
         .split(menu.inner(divider[0]));
 
@@ -152,31 +153,32 @@ fn chunks(chunk: Rect) -> Rc<[Rect]> {
 }
 
 fn handle_events(app: &mut App) -> Result<(), Box<dyn Error>> {
-    match event::read() {
-        Ok(Event::Key(key)) if key.kind == KeyEventKind::Press => match key.code {
-            KeyCode::Down => {
-                if app.cycle < 3 {
-                    app.cycle += 1;
-                } else {
-                    app.cycle = 3;
+    if poll(Duration::from_millis(100))? {
+        match event::read() {
+            Ok(Event::Key(key)) if key.kind == KeyEventKind::Press => match key.code {
+                KeyCode::Down => {
+                    if app.cycle < 3 {
+                        app.cycle += 1;
+                    } else {
+                        app.cycle = 3;
+                    }
                 }
-            }
-            KeyCode::Up => {
-                if app.cycle > 0 {
-                    app.cycle -= 1;
-                } else {
-                    app.cycle = 0;
+                KeyCode::Up => {
+                    if app.cycle > 0 {
+                        app.cycle -= 1;
+                    } else {
+                        app.cycle = 0;
+                    }
                 }
-            }
-            KeyCode::Enter => match app.cycle {
-                0 => app.app_state = Menu::Dictionary,
-                3 => app.app_state = Menu::Exit,
+                KeyCode::Enter => match app.cycle {
+                    0 => app.app_state = Menu::Dictionary,
+                    3 => app.app_state = Menu::Exit,
+                    _ => (),
+                },
                 _ => (),
             },
             _ => (),
-        },
-        _ => (),
+        }
     }
-
     Ok(())
 }
