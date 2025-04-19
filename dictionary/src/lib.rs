@@ -4,11 +4,12 @@ use ratatui::{
     DefaultTerminal, Frame, Terminal, backend,
     crossterm::event::{self, Event, KeyCode, KeyEventKind, poll},
     layout::{Constraint, Layout},
-    style::{Color, Style},
+    style::{Color, Style, Stylize},
     widgets::Block,
 };
 
 mod tests;
+mod cotoba;
 
 enum Menu {
     Menu,
@@ -60,7 +61,7 @@ fn render_callback(frame: &mut Frame) {
     )
     .split(main_block.inner(frame.area()));
 
-    let place_holder = Block::bordered();
+    let place_holder = Block::bordered().style(Style::new()).fg(Color::Green);
 
     frame.render_widget(&main_block, base_area[0]);
     frame.render_widget(&place_holder, base_area[1]);
