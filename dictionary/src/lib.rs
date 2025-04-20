@@ -5,8 +5,8 @@ use ratatui::{
     DefaultTerminal, Frame, Terminal, backend,
     crossterm::event::{self, Event, KeyCode, KeyEventKind, poll},
     layout::{Constraint, Direction, Layout},
-    style::{Color, Style, Stylize},
-    widgets::{Block, BorderType, Borders, List, ListState, Paragraph, Wrap},
+    style::{Style, Stylize},
+    widgets::{Block, Borders, List, ListState, Paragraph, Wrap},
 };
 
 mod cotoba;
