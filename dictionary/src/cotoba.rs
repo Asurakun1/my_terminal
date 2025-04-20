@@ -6,14 +6,35 @@ pub struct Cotoba {
 }
 
 impl Cotoba {
-    pub fn new(word: String, reading: Vec<String>, definition: String) -> Self {
+    pub fn new(word: &str, reading: Vec<String>, definition: &str) -> Self {
         Self {
-            word,
+            word: word.to_string(),
             reading,
-            definition,
+            definition: definition.to_string(),
         }
     }
+
     pub fn get_word(&self) -> &str {
         &self.word
+    }
+
+    pub fn get_reading(&self) -> &Vec<String> {
+        &self.reading
+    }
+
+    pub fn get_definition(&self) -> &str {
+        &self.definition
+    }
+
+    pub fn set_word(&mut self, word: &str) {
+        self.word = word.to_string();
+    }
+
+    pub fn set_reading(&mut self, reading: Vec<String>) {
+        self.reading = reading;
+    }
+
+    pub fn set_definition(&mut self, definition: &str) {
+        self.definition = definition.to_string();
     }
 }

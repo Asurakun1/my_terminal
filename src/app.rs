@@ -28,6 +28,7 @@ impl App {
         Self {
             cycle: 0,
             terminal,
+            //Temperory state change
             app_state: Menu::Menu,
         }
     }
@@ -43,8 +44,10 @@ impl App {
                 }
                 // Enter Dictionary Module
                 Menu::Dictionary => {
-                    let mut dictionary = Dictionary::new();
-                    dictionary.run()?;
+                    {
+                        let mut dictionary = Dictionary::new();
+                        dictionary.run()?;
+                    }
 
                     //re enter the alternate screen
                     self.app_state = Menu::Menu;

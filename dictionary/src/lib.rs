@@ -1,15 +1,17 @@
-use std::{error::Error, io::stdout, time::Duration};
+use std::{error::Error, io::stdout, time::Duration, vec};
 
+use main_layout::MainLayout;
 use ratatui::{
     DefaultTerminal, Frame, Terminal, backend,
     crossterm::event::{self, Event, KeyCode, KeyEventKind, poll},
-    layout::{Constraint, Layout},
+    layout::{Constraint, Direction, Layout},
     style::{Color, Style, Stylize},
-    widgets::Block,
+    widgets::{Block, BorderType, Borders, List, ListState, Paragraph, Wrap},
 };
 
-mod tests;
 mod cotoba;
+mod main_layout;
+mod tests;
 
 enum Menu {
     Menu,
@@ -19,6 +21,8 @@ enum Menu {
 pub struct Dictionary {
     terminal: DefaultTerminal,
     menu_state: Menu,
+    list_state: ListState,
+    items: Vec<String>,
 }
 
 impl Dictionary {
@@ -27,17 +31,30 @@ impl Dictionary {
         Self {
             terminal,
             menu_state: Menu::Menu,
+            list_state: ListState::default(),
+            items: vec![
+                "Add Word（言葉を追加する）".to_string(),
+                "Edit Word（変更）".to_string(),
+                "Word Search（検索）".to_string(),
+            ],
         }
     }
 
     pub fn run(&mut self) -> Result<(), Box<dyn Error>> {
         self.terminal.clear()?;
+        self.list_state.select_first();
+        let mut main_layout = MainLayout::new();
 
         loop {
             match self.menu_state {
                 Menu::Menu => {
                     self.terminal.draw(|frame| {
-                        render_callback(frame);
+                        render_callback(
+                            frame,
+                            self.items.clone(),
+                            &mut self.list_state,
+                            &mut main_layout,
+                        );
                     })?;
 
                     handle_events(self)?;
@@ -52,19 +69,29 @@ impl Dictionary {
     }
 }
 
-fn render_callback(frame: &mut Frame) {
-    let main_block = Block::bordered().style(Style::new().fg(Color::Green));
+fn render_callback(
+    frame: &mut Frame,
+    items: Vec<String>,
+    state: &mut ListState,
+    main_layout: &mut MainLayout,
+) {
+    //Left and right main window
+    main_layout.render(frame);
+    let left = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Percentage(30), Constraint::Max(3)])
+        .split(main_layout.left.inner(main_layout.area[0]));
 
-    let base_area = Layout::new(
-        ratatui::layout::Direction::Horizontal,
-        [Constraint::Fill(50), Constraint::Fill(50)],
-    )
-    .split(main_block.inner(frame.area()));
+    let list = List::new(items)
+        .block(Block::new().borders(Borders::BOTTOM))
+        .highlight_style(Style::new().reversed());
 
-    let place_holder = Block::bordered().style(Style::new()).fg(Color::Green);
+    let p1_placeholder = Paragraph::new(
+        "すみません今からは何もい動いていないです。\n「Ｑ」のボッタンを押すならプログラムを終了します。",
+    ).wrap(Wrap { trim: true });
 
-    frame.render_widget(&main_block, base_area[0]);
-    frame.render_widget(&place_holder, base_area[1]);
+    frame.render_stateful_widget(list, left[0], state);
+    frame.render_widget(p1_placeholder, left[1]);
 }
 
 fn handle_events(dictionary: &mut Dictionary) -> Result<(), Box<dyn Error>> {
@@ -74,7 +101,16 @@ fn handle_events(dictionary: &mut Dictionary) -> Result<(), Box<dyn Error>> {
                 if key_event.kind == KeyEventKind::Press {
                     match key_event.code {
                         KeyCode::Char('q') => {
-                            dictionary.menu_state = Menu::Exit;
+                            panic!("This is a temperory force close");
+                            //dictionary.menu_state = Menu::Exit;
+                        }
+
+                        KeyCode::Down => {
+                            dictionary.list_state.select_next();
+                        }
+
+                        KeyCode::Up => {
+                            dictionary.list_state.select_previous();
                         }
                         _ => (),
                     }
