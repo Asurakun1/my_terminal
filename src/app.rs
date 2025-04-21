@@ -8,7 +8,7 @@ use ratatui::{
     crossterm::event::{self, Event, KeyCode, KeyEventKind, poll},
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Style, Styled},
-    widgets::{Block, Paragraph, RatatuiLogo, Wrap},
+    widgets::{Block, Paragraph, RatatuiLogo},
 };
 
 #[derive(PartialEq)]
@@ -42,6 +42,10 @@ impl<'a> App<'a> {
         }
     }
 
+    /*
+    Runs the state machine
+     */
+
     pub fn run(&mut self) -> Result<(), Box<dyn Error>> {
         loop {
             match self.app_state {
@@ -53,10 +57,8 @@ impl<'a> App<'a> {
                 }
                 // Enter Dictionary Module
                 Menu::Dictionary => {
-                    {
-                        let mut dictionary = DictionaryApp::new()?;
-                        dictionary.run()?;
-                    }
+                    let mut dictionary = DictionaryApp::new()?;
+                    dictionary.run()?;
 
                     //re enter the alternate screen
                     self.app_state = Menu::Menu;
@@ -84,6 +86,9 @@ fn render_callback(frame: &mut Frame, cycle: u8, items: &mut Vec<Paragraph>) {
     menu_right_chunk(frame, Rc::clone(&divider), &menu_block);
 }
 
+/*
+Split the first layer into 2 halves
+*/
 fn main_screen_block<'a>(layer_0: Rc<[Rect]>) -> (Block<'a>, Rc<[Rect]>) {
     let menu_block = Block::bordered()
         .style(Style::new().fg(Color::Green))
@@ -95,6 +100,11 @@ fn main_screen_block<'a>(layer_0: Rc<[Rect]>) -> (Block<'a>, Rc<[Rect]>) {
         .split(layer_0[0]);
     (menu_block, divider)
 }
+
+/*
+Right main menu
+Icons are just for display
+*/
 
 fn menu_right_chunk(frame: &mut Frame, divider: Rc<[Rect]>, menu: &Block) {
     let inner_right_chunk = Layout::default()
@@ -116,6 +126,14 @@ fn menu_right_chunk(frame: &mut Frame, divider: Rc<[Rect]>, menu: &Block) {
     frame.render_widget(block, inner_right_chunk[2]);
 }
 
+/*
+Menu selection function
+Item 1
+Item 2
+Item 3
+Item 4
+*/
+
 fn menu_selection(
     frame: &mut Frame,
     menu: &Block,
@@ -133,6 +151,7 @@ fn menu_selection(
         ])
         .split(menu.inner(divider[0]));
 
+    //iterate the menu items and render. Highlight only the selected, the rest will not be highlighted.
     (0..items.capacity()).into_iter().for_each(|index| {
         match *cycle == index as u8 {
             true => {
@@ -151,6 +170,13 @@ fn chunks(chunk: Rect) -> Rc<[Rect]> {
         .constraints([Constraint::Fill(10)])
         .split(chunk)
 }
+
+/*
+handle all events
+input
+states
+data flow
+*/
 
 fn handle_events(app: &mut App) -> Result<(), Box<dyn Error>> {
     if poll(Duration::from_millis(100))? {
