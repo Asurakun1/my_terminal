@@ -6,7 +6,6 @@ use ratatui::{
     style::{Color, Style},
     widgets::Block,
 };
-
 pub struct MainLayout<'a> {
     pub left: Block<'a>,
     pub right: Block<'a>,
@@ -17,7 +16,9 @@ pub struct MainLayout<'a> {
 impl<'a> MainLayout<'a> {
     pub fn new() -> Self {
         Self {
-            left: Block::bordered().style(Style::new().fg(Color::Green)).title("Dictionary (辞書)"),
+            left: Block::bordered()
+                .style(Style::new().fg(Color::Green))
+                .title("Dictionary (辞書)"),
             right: Block::bordered().style(Style::new().fg(Color::Green)),
             layout: Layout::default()
                 .direction(ratatui::layout::Direction::Horizontal)

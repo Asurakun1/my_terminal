@@ -1,117 +1,120 @@
 use std::{error::Error, io::stdout, time::Duration, vec};
 
-use main_layout::MainLayout;
 use ratatui::{
     DefaultTerminal, Frame, Terminal, backend,
     crossterm::event::{self, Event, KeyCode, KeyEventKind, poll},
-    layout::{Constraint, Direction, Layout},
-    style::{Style, Stylize},
-    widgets::{Block, Borders, List, ListState, Paragraph, Wrap},
 };
+use ui::{main_layout::MainLayout, main_selection::MainSelection};
 
 mod cotoba;
-mod main_layout;
 mod tests;
+mod ui;
 
 enum Menu {
     Menu,
+    AddWord,
     Exit,
 }
 
-pub struct Dictionary {
+pub struct DictionaryApp<'a> {
     terminal: DefaultTerminal,
     menu_state: Menu,
-    list_state: ListState,
+    main_selection: MainSelection<'a>,
     items: Vec<String>,
 }
 
-impl Dictionary {
-    pub fn new() -> Self {
-        let terminal = Terminal::new(backend::CrosstermBackend::new(stdout())).unwrap();
-        Self {
+impl<'a> DictionaryApp<'a> {
+    pub fn new() -> Result<Self, Box<dyn Error>> {
+        let terminal = Terminal::new(backend::CrosstermBackend::new(stdout()))?;
+        Ok(Self {
             terminal,
             menu_state: Menu::Menu,
-            list_state: ListState::default(),
+            main_selection: MainSelection::default(),
             items: vec![
                 "Add Word（言葉を追加する）".to_string(),
                 "Edit Word（変更）".to_string(),
                 "Word Search（検索）".to_string(),
             ],
-        }
+        })
     }
 
     pub fn run(&mut self) -> Result<(), Box<dyn Error>> {
         self.terminal.clear()?;
-        self.list_state.select_first();
         let mut main_layout = MainLayout::new();
-
+        self.main_selection = MainSelection::new(self.items.clone());
         loop {
             match self.menu_state {
                 Menu::Menu => {
+                    let main_selection = &mut self.main_selection;
+                    let main_layout = &mut main_layout;
                     self.terminal.draw(|frame| {
-                        render_callback(
-                            frame,
-                            self.items.clone(),
-                            &mut self.list_state,
-                            &mut main_layout,
-                        );
+                        render_main(frame, main_layout, main_selection);
                     })?;
 
+                    handle_events(self)?;
+                }
+
+                Menu::AddWord => {
+                    self.terminal.draw(|frame| {
+                        let main_selection = &mut self.main_selection;
+                        let main_layout = &mut main_layout;
+                        render_main(frame, main_layout, main_selection);
+                    })?;
                     handle_events(self)?;
                 }
                 Menu::Exit => {
                     self.terminal.clear()?;
                     break;
                 }
+
+                _ => {}
             }
         }
         Ok(())
     }
 }
 
-fn render_callback(
+fn render_add_word(frame: &mut Frame) {}
+
+fn render_main(
     frame: &mut Frame,
-    items: Vec<String>,
-    state: &mut ListState,
     main_layout: &mut MainLayout,
+    main_selection: &mut MainSelection,
 ) {
-    //Left and right main window
+    // Render the main layout of the terminal interface, including the left and right sections of the UI.
     main_layout.render(frame);
-    let left = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([Constraint::Percentage(30), Constraint::Max(3)])
-        .split(main_layout.left.inner(main_layout.area[0]));
-
-    let list = List::new(items)
-        .block(Block::new().borders(Borders::BOTTOM))
-        .highlight_style(Style::new().reversed());
-
-    let p1_placeholder = Paragraph::new(
-        "すみません今からは何もい動いていないです。\n「Ｑ」のボッタンを押すならプログラムを終了します。",
-    ).wrap(Wrap { trim: true });
-
-    frame.render_stateful_widget(list, left[0], state);
-    frame.render_widget(p1_placeholder, left[1]);
+    //left menu selection
+    main_selection.render(frame, main_layout.left.inner(main_layout.area[0]));
 }
 
-fn handle_events(dictionary: &mut Dictionary) -> Result<(), Box<dyn Error>> {
+fn handle_events(dictionary: &mut DictionaryApp) -> Result<(), Box<dyn Error>> {
     if poll(Duration::from_millis(100))? {
         match event::read() {
             Ok(Event::Key(key_event)) => {
                 if key_event.kind == KeyEventKind::Press {
                     match key_event.code {
                         KeyCode::Char('q') => {
+                            dictionary.menu_state = Menu::Exit;
                             panic!("This is a temperory force close");
-                            //dictionary.menu_state = Menu::Exit;
                         }
 
                         KeyCode::Down => {
-                            dictionary.list_state.select_next();
+                            dictionary.main_selection.state.select_next();
                         }
 
                         KeyCode::Up => {
-                            dictionary.list_state.select_previous();
+                            dictionary.main_selection.state.select_previous();
                         }
+
+                        KeyCode::Enter => match dictionary.main_selection.state.selected().unwrap()
+                        {
+                            0 => {
+                                dictionary.menu_state = Menu::AddWord;
+                            }
+
+                            _ => {}
+                        },
+
                         _ => (),
                     }
                 }

@@ -1,4 +1,5 @@
-use dictionary::Dictionary;
+use dictionary::DictionaryApp;
+use ratatui::style::Stylize;
 use std::rc::Rc;
 use std::{error::Error, time::Duration};
 
@@ -17,17 +18,25 @@ enum Menu {
     Exit,
 }
 
-pub struct App {
+pub struct App<'a> {
     app_state: Menu,
     terminal: DefaultTerminal,
     cycle: u8,
+    menu_select: Vec<Paragraph<'a>>,
 }
 
-impl App {
+impl<'a> App<'a> {
     pub fn new(terminal: DefaultTerminal) -> Self {
         Self {
             cycle: 0,
             terminal,
+            menu_select: vec![
+                Paragraph::new("Dictionary（辞書）").block(Block::bordered()),
+                Paragraph::new("すべてのリストが選択可能です。").block(Block::bordered()),
+                Paragraph::new("でも、選択だとしても。今からは何も動いていない。")
+                    .block(Block::bordered()),
+                Paragraph::new("Exit（終了）").block(Block::bordered()),
+            ],
             //Temperory state change
             app_state: Menu::Menu,
         }
@@ -38,14 +47,14 @@ impl App {
             match self.app_state {
                 Menu::Menu => {
                     self.terminal.draw(|frame| {
-                        render_callback(frame, self.cycle);
+                        render_callback(frame, self.cycle, &mut self.menu_select);
                     })?;
                     handle_events(self)?;
                 }
                 // Enter Dictionary Module
                 Menu::Dictionary => {
                     {
-                        let mut dictionary = Dictionary::new();
+                        let mut dictionary = DictionaryApp::new()?;
                         dictionary.run()?;
                     }
 
@@ -64,14 +73,14 @@ impl App {
 }
 
 //Draws the main screen
-fn render_callback(frame: &mut Frame, cycle: u8) {
+fn render_callback(frame: &mut Frame, cycle: u8, items: &mut Vec<Paragraph>) {
     //outer layer main screen block
     let layer_0 = chunks(frame.area());
     let (menu_block, divider) = main_screen_block(Rc::clone(&layer_0));
     frame.render_widget(&menu_block, layer_0[0]);
 
     //list of modules (implemented or not)
-    menu_selection(frame, &menu_block, &divider, &cycle);
+    menu_selection(frame, &menu_block, &divider, &cycle, items);
     menu_right_chunk(frame, Rc::clone(&divider), &menu_block);
 }
 
@@ -107,7 +116,13 @@ fn menu_right_chunk(frame: &mut Frame, divider: Rc<[Rect]>, menu: &Block) {
     frame.render_widget(block, inner_right_chunk[2]);
 }
 
-fn menu_selection(frame: &mut Frame, menu: &Block, divider: &Rc<[Rect]>, cycle: &u8) {
+fn menu_selection(
+    frame: &mut Frame,
+    menu: &Block,
+    divider: &Rc<[Rect]>,
+    cycle: &u8,
+    items: &mut Vec<Paragraph>,
+) {
     let inner_left_chunk = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
@@ -118,35 +133,17 @@ fn menu_selection(frame: &mut Frame, menu: &Block, divider: &Rc<[Rect]>, cycle: 
         ])
         .split(menu.inner(divider[0]));
 
-    let mut item_1 = Paragraph::new("Dictionary（辞書）")
-        .block(Block::bordered())
-        .wrap(Wrap { trim: false });
-    let mut item_2 = Paragraph::new("すべてのリストが選択可能です。")
-        .block(Block::bordered())
-        .wrap(Wrap { trim: true });
-    let mut item_3 = Paragraph::new("でも、選択だとしても。今からは何も動いていない。")
-        .block(Block::bordered())
-        .wrap(Wrap { trim: true });
-    let mut item_4 = Paragraph::new("Exit（終了）")
-        .block(Block::bordered())
-        .wrap(Wrap { trim: true });
-
-    match cycle {
-        0 => {
-            item_1 = item_1.set_style(Style::new().bg(Color::Green).fg(Color::Black));
+    (0..items.capacity()).into_iter().for_each(|index| {
+        match *cycle == index as u8 {
+            true => {
+                items[index] = items[index].to_owned().set_style(Style::new().reversed());
+            }
+            false => {
+                items[index] = items[index].to_owned().set_style(Style::new());
+            }
         }
-        1 => {
-            item_2 = item_2.set_style(Style::new().bg(Color::Green).fg(Color::Black));
-        }
-        2 => item_3 = item_3.set_style(Style::new().bg(Color::Green).fg(Color::Black)),
-        3 => item_4 = item_4.set_style(Style::new().bg(Color::Green).fg(Color::Black)),
-        _ => {}
-    }
-
-    frame.render_widget(item_1, inner_left_chunk[0]);
-    frame.render_widget(item_2, inner_left_chunk[1]);
-    frame.render_widget(item_3, inner_left_chunk[2]);
-    frame.render_widget(item_4, inner_left_chunk[3]);
+        frame.render_widget(&items[index], inner_left_chunk[index]);
+    });
 }
 
 fn chunks(chunk: Rect) -> Rc<[Rect]> {
