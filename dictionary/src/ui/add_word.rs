@@ -43,6 +43,19 @@ impl<'a> AddWord<'a> {
 
         frame.render_stateful_widget(&self.list, area[0], &mut self.menu);
     }
+
+    /*
+    Lists and events handled as lists will most likely be scrapped.
+    This is because the add_word is supposed to take inputs of three separate modifiable categories
+    The word
+    The reading
+    The definition
+
+    Although a list may be suitable, it is still worthwhile to play around with the ratatui library to see what could work for
+    List-block type inputs
+
+    */
+
     pub fn handle_events(&mut self) {
         match event::read() {
             Ok(Event::Key(key_code)) => {
