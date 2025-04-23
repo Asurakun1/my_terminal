@@ -1,132 +1,167 @@
-use std::{
-    error::Error,
-    io::{self, stdout},
-    sync::Arc,
-    thread::{self, Thread},
-    time::{Duration, Instant},
-};
+use std::{error::Error, io::stdout, time::Duration};
 
 use ratatui::{
     DefaultTerminal, Frame, Terminal, backend,
-    crossterm::{
-        event::{self, Event, KeyCode, KeyEventKind, poll},
-        execute,
-        terminal::LeaveAlternateScreen,
-    },
-    layout::{Constraint, Layout},
-    prelude::CrosstermBackend,
-    style::{Color, Style, Stylize},
-    text::{Line, Span},
-    widgets::{Block, Paragraph, RatatuiLogo},
+    crossterm::event::{self, Event, KeyCode, KeyEventKind, poll},
+};
+use ui::{
+    add_word::{self, AddWord},
+    main_layout::MainLayout,
+    main_selection::MainSelection,
 };
 
+mod cotoba;
 mod tests;
+mod ui;
 
+const MAIN_MENU: [&str; 4] = [
+    "Add Word（言葉を追加する）",
+    "Edit Word（変更）",
+    "Word Search（検索）",
+    "Back（戻る）",
+];
+
+#[derive(Clone, Copy)]
 enum Menu {
     Menu,
+    AddWord,
     Exit,
 }
 
-pub struct Dictionary {
+pub struct DictionaryApp<'a> {
     terminal: DefaultTerminal,
     menu_state: Menu,
-    text: [String; 3],
+    main_selection: MainSelection<'a>,
+    items: [&'static str; 4],
+    add_word: AddWord<'a>,
 }
 
-impl Dictionary {
-    pub fn new() -> Self {
-        let terminal = Terminal::new(backend::CrosstermBackend::new(stdout())).unwrap();
-        let text = [
-            "asdfzfxdasd".to_string(),
-            "123213asdasd".to_string(),
-            "asdzcaadl123123".to_string(),
-        ];
-
-        Self {
+impl<'a> DictionaryApp<'a> {
+    pub fn new() -> Result<Self, Box<dyn Error>> {
+        let terminal = Terminal::new(backend::CrosstermBackend::new(stdout()))?;
+        Ok(Self {
             terminal,
             menu_state: Menu::Menu,
-            text,
-        }
+            main_selection: MainSelection::default(),
+            items: MAIN_MENU,
+            add_word: AddWord::new(),
+        })
     }
 
     pub fn run(&mut self) -> Result<(), Box<dyn Error>> {
-        let interval = Duration::from_secs(1);
-
-        let mut last_time = Instant::now();
         self.terminal.clear()?;
+        let mut main_layout = MainLayout::new();
+        self.main_selection = MainSelection::new(self.items);
+
         loop {
             match self.menu_state {
-                Menu::Menu => {
+                Menu::Menu | Menu::AddWord => {
+                    let main_selection = &mut self.main_selection;
+                    let main_layout = &mut main_layout;
                     self.terminal.draw(|frame| {
-                        render_callback(frame, &self.text, interval, &mut last_time);
+                        render_main(
+                            frame,
+                            main_layout,
+                            main_selection,
+                            &self.menu_state,
+                            &mut self.add_word,
+                        )
                     })?;
 
                     handle_events(self)?;
                 }
+
                 Menu::Exit => {
                     self.terminal.clear()?;
                     break;
                 }
+
+                _ => {}
             }
         }
         Ok(())
     }
 }
 
-fn render_callback(
+fn render_main(
     frame: &mut Frame,
-    text: &[String; 3],
-    interval: Duration,
-    last_time: &mut Instant,
+    main_layout: &mut MainLayout,
+    main_selection: &mut MainSelection,
+    menu_state: &Menu,
+    add_word: &mut AddWord,
 ) {
-    let main_block = Block::bordered().style(Style::new().fg(Color::Green));
+    // Render the main layout of the terminal interface, including the left and right sections of the UI.
 
-    let base_area = Layout::new(
-        ratatui::layout::Direction::Horizontal,
-        [Constraint::Fill(50), Constraint::Fill(50)],
-    )
-    .split(main_block.inner(frame.area()));
+    main_layout.render(frame);
+    //left menu selection
 
-    let logo = RatatuiLogo::small();
+    main_selection.render(frame, main_layout.left.inner(main_layout.area[0]));
 
-    // text.into_iter().for_each(|char| {
-    //     thread::sleep(Duration::from_millis(10));
-    //     print!("{char}");
-    //     std::io::stdout().flush().unwrap();
-    // });
-
-    let current_time = Instant::now();
-
-    let elapsed = current_time.duration_since(*last_time);
-
-    let mut para = Paragraph::new(text[0].clone()).block(Block::bordered());
-
-    if elapsed >= interval {
-        para = Paragraph::new(text[1].clone()).block(Block::bordered());
-        frame.render_widget(&para, base_area[1]);
-
-        *last_time = current_time;
+    match menu_state {
+        Menu::AddWord => {
+            add_word.render(main_layout, frame);
+        }
+        _ => {}
     }
-
-    frame.render_widget(&main_block, base_area[0]);
-    frame.render_widget(&para, base_area[1]);
 }
 
-fn handle_events(dictionary: &mut Dictionary) -> Result<(), Box<dyn Error>> {
+/*
+Handle all events for selections, states, exites
+*/
+
+fn handle_events(dictionary: &mut DictionaryApp) -> Result<(), Box<dyn Error>> {
     if poll(Duration::from_millis(100))? {
-        match event::read() {
-            Ok(Event::Key(key_event)) => {
-                if key_event.kind == KeyEventKind::Press {
-                    match key_event.code {
-                        KeyCode::Char('q') => {
-                            dictionary.menu_state = Menu::Exit;
+        match dictionary.menu_state {
+            //handle events while the current state is Main Menu
+            Menu::Menu => {
+                match event::read() {
+                    Ok(Event::Key(key_event)) => {
+                        if key_event.kind == KeyEventKind::Press {
+                            match key_event.code {
+                                KeyCode::Down => {
+                                    dictionary.main_selection.get_state().select_next();
+                                }
+
+                                KeyCode::Up => {
+                                    dictionary.main_selection.get_state().select_previous();
+                                }
+
+                                KeyCode::Enter => {
+                                    match dictionary.main_selection.get_state().selected().unwrap()
+                                    {
+                                        0 => {
+                                            //Blank the selector and change the state
+                                            dictionary.main_selection.clear_highlight();
+
+                                            dictionary.menu_state = Menu::AddWord;
+                                            dictionary.add_word.menu_state = add_word::Menu::Cotoba;
+                                        }
+
+                                        3 => dictionary.menu_state = Menu::Exit,
+
+                                        _ => {}
+                                    }
+                                }
+
+                                _ => (),
+                            }
                         }
-                        _ => (),
                     }
+
+                    _ => (),
                 }
             }
+            Menu::AddWord => match dictionary.add_word.menu_state {
+                add_word::Menu::Exit => {
+                    dictionary.main_selection.show_highlight();
+                    dictionary.menu_state = Menu::Menu
+                }
+                _ => {
+                    dictionary.add_word.handle_events();
+                }
+            },
 
-            _ => (),
+            _ => {}
         }
     }
     Ok(())
