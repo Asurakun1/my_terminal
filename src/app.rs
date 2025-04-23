@@ -186,14 +186,14 @@ fn handle_events(app: &mut App) -> Result<(), Box<dyn Error>> {
                     if app.cycle < 3 {
                         app.cycle += 1;
                     } else {
-                        app.cycle = 3;
+                        app.cycle = 0;
                     }
                 }
                 KeyCode::Up => {
                     if app.cycle > 0 {
                         app.cycle -= 1;
                     } else {
-                        app.cycle = 0;
+                        app.cycle = 3;
                     }
                 }
                 KeyCode::Enter => match app.cycle {

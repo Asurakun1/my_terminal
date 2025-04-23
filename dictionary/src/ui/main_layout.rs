@@ -6,6 +6,7 @@ use ratatui::{
     style::{Color, Style},
     widgets::Block,
 };
+
 pub struct MainLayout<'a> {
     pub left: Block<'a>,
     pub right: Block<'a>,
@@ -29,6 +30,7 @@ impl<'a> MainLayout<'a> {
 
     pub fn render(&mut self, frame: &mut Frame) {
         self.area = self.layout.split(frame.area());
+
         frame.render_widget(&self.left, self.area[0]);
         frame.render_widget(&self.right, self.area[1]);
     }

@@ -9,12 +9,12 @@ use ratatui::{
 pub struct MainSelection<'a> {
     layout: Layout,
     list: List<'a>,
-    pub state: ListState,
+    state: ListState,
     p1_placeholder: Paragraph<'a>,
 }
 
 impl<'a> MainSelection<'a> {
-    pub fn new(items: Vec<String>) -> Self {
+    pub fn new(items: [&'static str; 4]) -> Self {
         MainSelection {
             layout: Layout::default()
                 .direction(Direction::Vertical)
@@ -27,7 +27,19 @@ impl<'a> MainSelection<'a> {
 
     pub fn render(&mut self, frame: &mut Frame, area: Rect) {
         let layout = self.layout.split(area);
-        frame.render_stateful_widget(self.list.clone(), layout[0], &mut self.state);
-        frame.render_widget(self.p1_placeholder.clone(), layout[1]);
+        frame.render_stateful_widget(&self.list, layout[0], &mut self.state);
+        frame.render_widget(&self.p1_placeholder, layout[1]);
+    }
+
+    pub fn clear_highlight(&mut self) {
+        self.list = self.list.clone().highlight_style(Style::new())
+    }
+
+    pub fn show_highlight(&mut self) {
+        self.list = self.list.clone().highlight_style(Style::new().reversed())
+    }
+
+    pub fn get_state(&mut self) -> &mut ListState {
+        &mut self.state
     }
 }
