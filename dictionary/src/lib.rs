@@ -32,7 +32,6 @@ pub struct DictionaryApp<'a> {
     terminal: DefaultTerminal,
     menu_state: Menu,
     main_selection: MainSelection<'a>,
-    items: [&'static str; 4],
     add_word: AddWord<'a>,
 }
 
@@ -43,7 +42,6 @@ impl<'a> DictionaryApp<'a> {
             terminal,
             menu_state: Menu::Menu,
             main_selection: MainSelection::default(),
-            items: MAIN_MENU,
             add_word: AddWord::new(),
         })
     }
@@ -51,7 +49,7 @@ impl<'a> DictionaryApp<'a> {
     pub fn run(&mut self) -> Result<(), Box<dyn Error>> {
         self.terminal.clear()?;
         let mut main_layout = MainLayout::new();
-        self.main_selection = MainSelection::new(self.items);
+        self.main_selection = MainSelection::new(MAIN_MENU);
 
         loop {
             match self.menu_state {
@@ -134,7 +132,7 @@ fn handle_events(dictionary: &mut DictionaryApp) -> Result<(), Box<dyn Error>> {
                                             dictionary.main_selection.clear_highlight();
 
                                             dictionary.menu_state = Menu::AddWord;
-                                            dictionary.add_word.menu_state = add_word::Menu::Cotoba;
+                                            dictionary.add_word.set_menu(add_word::Menu::Cotoba);
                                         }
 
                                         3 => dictionary.menu_state = Menu::Exit,
@@ -151,13 +149,13 @@ fn handle_events(dictionary: &mut DictionaryApp) -> Result<(), Box<dyn Error>> {
                     _ => (),
                 }
             }
-            Menu::AddWord => match dictionary.add_word.menu_state {
+            Menu::AddWord => match dictionary.add_word.get_menu() {
                 add_word::Menu::Exit => {
                     dictionary.main_selection.show_highlight();
                     dictionary.menu_state = Menu::Menu
                 }
                 _ => {
-                    dictionary.add_word.handle_events();
+                    dictionary.add_word.handle_events()?;
                 }
             },
 

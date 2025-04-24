@@ -11,6 +11,13 @@ use ratatui::{
     widgets::{Block, Paragraph, RatatuiLogo},
 };
 
+const MENU_SELECT: [&str; 4] = [
+    "Dictionary（辞書）",
+    "すべてのリストが選択可能です。",
+    "でも、選択だとしても。今からは何も動いていない。",
+    "Exit（終了）",
+];
+
 #[derive(PartialEq)]
 enum Menu {
     Menu,
@@ -22,21 +29,20 @@ pub struct App<'a> {
     app_state: Menu,
     terminal: DefaultTerminal,
     cycle: u8,
-    menu_select: Vec<Paragraph<'a>>,
+    menu_select: Box<[Paragraph<'a>]>,
 }
 
 impl<'a> App<'a> {
     pub fn new(terminal: DefaultTerminal) -> Self {
+        let list: Box<[Paragraph]> = MENU_SELECT
+            .iter()
+            .map(|item| Paragraph::new(*item).block(Block::bordered()))
+            .collect();
+
         Self {
             cycle: 0,
             terminal,
-            menu_select: vec![
-                Paragraph::new("Dictionary（辞書）").block(Block::bordered()),
-                Paragraph::new("すべてのリストが選択可能です。").block(Block::bordered()),
-                Paragraph::new("でも、選択だとしても。今からは何も動いていない。")
-                    .block(Block::bordered()),
-                Paragraph::new("Exit（終了）").block(Block::bordered()),
-            ],
+            menu_select: list,
             //Temperory state change
             app_state: Menu::Menu,
         }
@@ -75,7 +81,7 @@ impl<'a> App<'a> {
 }
 
 //Draws the main screen
-fn render_callback(frame: &mut Frame, cycle: u8, items: &mut Vec<Paragraph>) {
+fn render_callback(frame: &mut Frame, cycle: u8, items: &mut Box<[Paragraph]>) {
     //outer layer main screen block
     let layer_0 = chunks(frame.area());
     let (menu_block, divider) = main_screen_block(Rc::clone(&layer_0));
@@ -139,7 +145,7 @@ fn menu_selection(
     menu: &Block,
     divider: &Rc<[Rect]>,
     cycle: &u8,
-    items: &mut Vec<Paragraph>,
+    items: &mut Box<[Paragraph]>,
 ) {
     let inner_left_chunk = Layout::default()
         .direction(Direction::Vertical)
@@ -152,7 +158,7 @@ fn menu_selection(
         .split(menu.inner(divider[0]));
 
     //iterate the menu items and render. Highlight only the selected, the rest will not be highlighted.
-    (0..items.capacity()).into_iter().for_each(|index| {
+    (0..items.iter().count()).into_iter().for_each(|index| {
         match *cycle == index as u8 {
             true => {
                 items[index] = items[index].to_owned().set_style(Style::new().reversed());
