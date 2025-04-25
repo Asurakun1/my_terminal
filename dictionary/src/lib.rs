@@ -132,7 +132,7 @@ fn handle_events(dictionary: &mut DictionaryApp) -> Result<(), Box<dyn Error>> {
                                             dictionary.main_selection.clear_highlight();
 
                                             dictionary.menu_state = Menu::AddWord;
-                                            dictionary.add_word.set_menu(add_word::Menu::Cotoba);
+                                            dictionary.add_word.set_menu(add_word::Menu::Menu);
                                         }
 
                                         3 => dictionary.menu_state = Menu::Exit,

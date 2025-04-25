@@ -4,8 +4,8 @@ use std::time::Duration;
 
 use ratatui::crossterm::event::poll;
 use ratatui::layout::{Position, Rect};
-use ratatui::text::{Line, Text};
-use ratatui::widgets::{List, Paragraph};
+use ratatui::text::Line;
+use ratatui::widgets::List;
 use ratatui::{
     Frame,
     crossterm::event::{self, Event, KeyCode, KeyEventKind},
@@ -18,10 +18,16 @@ use super::main_layout::MainLayout;
 const ADD_WORD_MENU: [&str; 3] = ["言葉：　", "読み方：　", "定義：　"];
 
 pub enum Menu {
+    Menu,
     Cotoba,
     Yomikata,
     Teigi,
     Exit,
+}
+
+enum Editing {
+    On,
+    Off,
 }
 
 pub struct AddWord<'a> {
@@ -30,6 +36,8 @@ pub struct AddWord<'a> {
     list: List<'a>,
     menu_state: Menu,
     input: [String; 3],
+    input_x: u16,
+    editing: Editing,
 }
 
 impl<'a> AddWord<'a> {
@@ -40,9 +48,22 @@ impl<'a> AddWord<'a> {
             list: List::new(ADD_WORD_MENU)
                 .block(Block::bordered().title("言葉追加"))
                 .highlight_style(Style::new().reversed()),
-            menu_state: Menu::Cotoba,
+            menu_state: Menu::Menu,
             input: [String::new(), String::new(), String::new()],
+            input_x: 0,
+            editing: Editing::Off,
         }
+    }
+
+    fn clear_highlight(&mut self) {
+        self.list = self.list.to_owned().highlight_style(Style::new());
+    }
+
+    fn show_highlight(&mut self) {
+        self.list = self
+            .list
+            .to_owned()
+            .highlight_style(Style::new().reversed());
     }
 
     pub fn set_menu(&mut self, menu: Menu) {
@@ -123,26 +144,6 @@ impl<'a> AddWord<'a> {
     List-block type inputs
     */
 
-    fn current_selection(&mut self) {
-        if let Some(index) = self.menu.selected() {
-            match index {
-                0 => {
-                    self.set_menu(Menu::Cotoba);
-                }
-
-                1 => {
-                    self.set_menu(Menu::Yomikata);
-                }
-
-                2 => {
-                    self.set_menu(Menu::Teigi);
-                }
-
-                _ => {}
-            }
-        }
-    }
-
     fn handle_inputs(&mut self, ch: char) {
         match self.menu_state {
             Menu::Cotoba => {
@@ -167,28 +168,55 @@ impl<'a> AddWord<'a> {
     }
 
     pub fn handle_events(&mut self) -> Result<(), Box<dyn Error>> {
-        self.current_selection();
         if poll(Duration::from_millis(100))? {
             match event::read() {
                 Ok(Event::Key(key_code)) => {
                     if key_code.kind == KeyEventKind::Press {
-                        match key_code.code {
-                            KeyCode::Char('q') => self.menu_state = Menu::Exit,
-                            KeyCode::Down | KeyCode::Tab => {
-                                self.menu.select_next();
-                            }
+                        match self.menu_state {
+                            /*
+                            handle events for the add word menu
+                             */
+                            Menu::Menu => match key_code.code {
+                                KeyCode::Char('q') => self.menu_state = Menu::Exit,
+                                KeyCode::Down | KeyCode::Tab => {
+                                    self.menu.select_next();
+                                }
 
-                            KeyCode::Up => {
-                                self.menu.select_previous();
-                            }
+                                KeyCode::Up => {
+                                    self.menu.select_previous();
+                                }
 
-                            KeyCode::Char(ch) => {
-                                self.handle_inputs(ch);
-                            }
+                                KeyCode::Enter => match self.menu.selected().unwrap() {
+                                    0 => {
+                                        self.menu_state = Menu::Cotoba;
+                                        self.clear_highlight();
+                                    }
 
-                            KeyCode::Backspace => {
-                                self.delete_inputs().unwrap();
-                            }
+                                    _ => {}
+                                },
+
+                                _ => {}
+                            },
+
+                            Menu::Cotoba => match key_code.code {
+                                KeyCode::Char('q') => {
+                                    self.menu_state = Menu::Menu;
+                                    self.show_highlight();
+                                }
+
+                                KeyCode::Char(ch) => {
+                                    self.handle_inputs(ch);
+                                }
+
+                                KeyCode::Backspace => {
+                                    self.delete_inputs().unwrap();
+                                }
+
+                                KeyCode::Left | KeyCode::Right => {
+                                }
+
+                                _ => {}
+                            },
 
                             _ => {}
                         }
