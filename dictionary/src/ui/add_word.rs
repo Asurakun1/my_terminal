@@ -3,8 +3,7 @@ use std::rc::Rc;
 use std::time::Duration;
 
 use ratatui::crossterm::event::poll;
-use ratatui::layout::{Position, Rect};
-use ratatui::text::Line;
+use ratatui::layout::Rect;
 use ratatui::widgets::List;
 use ratatui::{
     Frame,
@@ -13,6 +12,7 @@ use ratatui::{
     style::{Style, Stylize},
     widgets::{Block, ListState},
 };
+use tui_textarea::TextArea;
 
 use super::main_layout::MainLayout;
 const ADD_WORD_MENU: [&str; 3] = ["言葉：　", "読み方：　", "定義：　"];
@@ -36,8 +36,8 @@ pub struct AddWord<'a> {
     list: List<'a>,
     menu_state: Menu,
     input: [String; 3],
-    input_x: u16,
     editing: Editing,
+    word_area: TextArea<'a>,
 }
 
 impl<'a> AddWord<'a> {
@@ -50,8 +50,8 @@ impl<'a> AddWord<'a> {
                 .highlight_style(Style::new().reversed()),
             menu_state: Menu::Menu,
             input: [String::new(), String::new(), String::new()],
-            input_x: 0,
             editing: Editing::Off,
+            word_area: TextArea::default(),
         }
     }
 
@@ -84,55 +84,39 @@ impl<'a> AddWord<'a> {
          */
         let layer2 = Layout::new(
             Direction::Horizontal,
-            [Constraint::Max(25), Constraint::Percentage(50)],
+            [Constraint::Max(25), Constraint::Percentage(60)],
         )
         .split(area[0]);
 
         let input_block = Block::bordered().title("入力");
 
-        self.render_line_state(frame, &input_block, &layer2);
         frame.render_stateful_widget(&self.list, layer2[0], &mut self.menu);
         frame.render_widget(&input_block, layer2[1]);
+        self.render_line_state(frame, &input_block, &layer2);
     }
 
-    fn render_line_state(&self, frame: &mut Frame, input_block: &Block, layer2: &Rc<[Rect]>) {
+    fn render_line_state(&mut self, frame: &mut Frame, input_block: &Block, layer2: &Rc<[Rect]>) {
         let input_area = Layout::new(
             Direction::Vertical,
-            [
-                Constraint::Percentage(30),
-                Constraint::Percentage(30),
-                Constraint::Percentage(30),
-            ],
+            [Constraint::Max(1), Constraint::Max(1), Constraint::Min(1)],
         )
         .split(input_block.inner(layer2[1]));
 
-        let line1 = Line::raw(&self.input[0]);
-        let line2 = Line::raw(&self.input[1]);
-
-        frame.render_widget(line1, input_area[0]);
-        frame.render_widget(line2, input_area[0]);
-        self.render_cursor_position(frame, &input_area);
-    }
-
-    fn render_cursor_position(&self, frame: &mut Frame, input_area: &Rc<[Rect]>) {
-        match self.menu_state {
+        match &self.menu_state {
             Menu::Cotoba => {
-                frame.set_cursor_position(Position::new(
-                    input_area[0].x + self.input[0].chars().count() as u16,
-                    input_area[0].y,
-                ));
+                frame.render_widget(&self.word_area, input_area[0]);
             }
             Menu::Yomikata => {
-                frame.set_cursor_position(Position::new(input_area[0].x, input_area[0].y + 1));
+                frame.render_widget(&self.word_area, input_area[1]);
             }
 
             Menu::Teigi => {
-                frame.set_cursor_position(Position::new(input_area[0].x, input_area[0].y + 2));
+                frame.render_widget(&self.word_area, input_area[2]);
             }
+
             _ => {}
         }
     }
-
     /*
     Lists and events handled as lists will most likely be scrapped.
     This is because the add_word is supposed to take inputs of three separate modifiable categories
@@ -143,29 +127,6 @@ impl<'a> AddWord<'a> {
     Although a list may be suitable, it is still worthwhile to play around with the ratatui library to see what could work for
     List-block type inputs
     */
-
-    fn handle_inputs(&mut self, ch: char) {
-        match self.menu_state {
-            Menu::Cotoba => {
-                self.input[0] = self.input[0].to_string() + &ch.to_string();
-            }
-            _ => {}
-        }
-    }
-
-    fn delete_inputs(&mut self) -> Option<()> {
-        match self.menu_state {
-            Menu::Cotoba => match self.input[0].char_indices().next_back() {
-                Some((i, _)) => {
-                    self.input[0] = self.input[0][..i].to_string();
-                }
-                None => {}
-            },
-
-            _ => {}
-        }
-        Some(())
-    }
 
     pub fn handle_events(&mut self) -> Result<(), Box<dyn Error>> {
         if poll(Duration::from_millis(100))? {
@@ -186,35 +147,52 @@ impl<'a> AddWord<'a> {
                                     self.menu.select_previous();
                                 }
 
-                                KeyCode::Enter => match self.menu.selected().unwrap() {
-                                    0 => {
-                                        self.menu_state = Menu::Cotoba;
-                                        self.clear_highlight();
-                                    }
+                                KeyCode::Enter => {
+                                    self.clear_highlight();
+                                    self.word_area.set_cursor_line_style(Style::new());
 
-                                    _ => {}
-                                },
+                                    match self.menu.selected().unwrap() {
+                                        0 => {
+                                            self.menu_state = Menu::Cotoba;
+                                        }
+
+                                        1 => {
+                                            self.menu_state = Menu::Yomikata;
+                                        }
+
+                                        2 => {
+                                            self.menu_state = Menu::Teigi;
+                                        }
+
+                                        _ => {}
+                                    }
+                                }
 
                                 _ => {}
                             },
 
-                            Menu::Cotoba => match key_code.code {
+                            Menu::Cotoba | Menu::Yomikata | Menu::Teigi => match key_code.code {
                                 KeyCode::Char('q') => {
                                     self.menu_state = Menu::Menu;
                                     self.show_highlight();
                                 }
 
                                 KeyCode::Char(ch) => {
-                                    self.handle_inputs(ch);
+                                    self.word_area.insert_char(ch);
                                 }
 
                                 KeyCode::Backspace => {
-                                    self.delete_inputs().unwrap();
+                                    self.word_area.delete_char();
                                 }
 
-                                KeyCode::Left | KeyCode::Right => {
+                                KeyCode::Left => {
+                                    self.word_area.move_cursor(tui_textarea::CursorMove::Back);
                                 }
 
+                                KeyCode::Right => {
+                                    self.word_area
+                                        .move_cursor(tui_textarea::CursorMove::Forward);
+                                }
                                 _ => {}
                             },
 
