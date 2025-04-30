@@ -23,6 +23,7 @@ impl<'a> MainLayout<'a> {
             right: Block::bordered().style(Style::new().fg(Color::Green)),
             layout: Layout::default()
                 .direction(ratatui::layout::Direction::Horizontal)
+                //LEFT WINDOW ---- RIGHT WINDOW
                 .constraints([Constraint::Percentage(40), Constraint::Fill(50)]),
             area: Rc::new([Rect::new(0, 0, 0, 0)]),
         }

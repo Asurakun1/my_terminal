@@ -1,8 +1,10 @@
-use std::{error::Error, io::stdout, time::Duration};
+use std::{error::Error, io::stdout, rc::Rc, time::Duration};
 
 use ratatui::{
     DefaultTerminal, Frame, Terminal, backend,
     crossterm::event::{self, Event, KeyCode, KeyEventKind, poll},
+    layout::{Constraint, Direction, Layout},
+    text::Line,
 };
 use ui::{
     add_word::{self, AddWord},
@@ -95,12 +97,29 @@ fn render_main(
 
     main_selection.render(frame, main_layout.left.inner(main_layout.area[0]));
 
+    /*
+    Right window is split into two parts vertically
+     */
+    let mut right_window = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Percentage(0), Constraint::Fill(10)])
+        .split(main_layout.right.inner(main_layout.area[1]));
+
     match menu_state {
         Menu::AddWord => {
-            add_word.render(main_layout, frame);
+            //Right window draws the top of the stack only when called
+            right_window = Layout::default()
+                .direction(Direction::Vertical)
+                .constraints([Constraint::Percentage(30), Constraint::Fill(10)])
+                .split(main_layout.right.inner(main_layout.area[1]));
+            add_word.render(right_window.clone(), frame);
         }
         _ => {}
     }
+
+    let line = Line::from(add_word.get_cotoba().get_word());
+
+    frame.render_widget(line, right_window[1]);
 }
 
 /*
@@ -133,6 +152,7 @@ fn handle_events(dictionary: &mut DictionaryApp) -> Result<(), Box<dyn Error>> {
 
                                             dictionary.menu_state = Menu::AddWord;
                                             dictionary.add_word.set_menu(add_word::Menu::Menu);
+                                            dictionary.terminal.clear()?;
                                         }
 
                                         3 => dictionary.menu_state = Menu::Exit,
@@ -149,6 +169,10 @@ fn handle_events(dictionary: &mut DictionaryApp) -> Result<(), Box<dyn Error>> {
                     _ => (),
                 }
             }
+
+            /*
+            handle events inside the AddWord
+             */
             Menu::AddWord => match dictionary.add_word.get_menu() {
                 add_word::Menu::Exit => {
                     dictionary.main_selection.show_highlight();
