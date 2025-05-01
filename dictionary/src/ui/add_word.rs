@@ -68,7 +68,7 @@ impl<'a> AddWord<'a> {
         &self.menu_state
     }
 
-    pub fn get_cotoba(&self) -> &Cotoba {
+    pub fn cotoba(&self) -> &Cotoba {
         &self.cotoba
     }
 
@@ -135,7 +135,18 @@ impl<'a> AddWord<'a> {
             }
 
             KeyCode::Enter => {
-                self.cotoba.set_word(&self.word_area.lines()[0]);
+                match self.menu_state {
+                    Menu::Cotoba => {
+                        self.cotoba.set_word(&self.word_area.lines()[0]);
+                    }
+
+                    Menu::Yomikata => {
+                        self.cotoba.set_reading(&self.word_area.lines()[0]);
+                    }
+
+                    _ => {}
+                }
+
                 self.word_area = TextArea::from(vec![""]);
             }
             _ => {}

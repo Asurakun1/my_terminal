@@ -75,8 +75,6 @@ impl<'a> DictionaryApp<'a> {
                     self.terminal.clear()?;
                     break;
                 }
-
-                _ => {}
             }
         }
         Ok(())
@@ -117,7 +115,7 @@ fn render_main(
         _ => {}
     }
 
-    let line = Line::from(add_word.get_cotoba().get_word());
+    let line = Line::from(add_word.cotoba().get_word());
 
     frame.render_widget(line, right_window[1]);
 }

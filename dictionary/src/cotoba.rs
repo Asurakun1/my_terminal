@@ -30,8 +30,11 @@ impl Cotoba {
         self.word = word.to_string();
     }
 
-    pub fn set_reading(&mut self, reading: Vec<String>) {
-        self.reading = reading;
+    pub fn set_reading(&mut self, reading: &str) {
+        self.reading = reading
+            .split(",")
+            .map(|str| str.trim().to_string())
+            .collect();
     }
 
     pub fn set_definition(&mut self, definition: &str) {
