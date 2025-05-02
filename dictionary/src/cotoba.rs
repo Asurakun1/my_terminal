@@ -6,11 +6,11 @@ pub struct Cotoba {
 }
 
 impl Cotoba {
-    pub fn new(word: &str, reading: Vec<String>, definition: &str) -> Self {
+    pub fn new() -> Self {
         Self {
-            word: word.to_string(),
-            reading,
-            definition: definition.to_string(),
+            word: String::from(""),
+            reading: vec![],
+            definition: String::from(""),
         }
     }
 

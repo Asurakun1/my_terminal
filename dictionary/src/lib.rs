@@ -1,10 +1,11 @@
-use std::{error::Error, io::stdout, rc::Rc, time::Duration};
+use std::{error::Error, io::stdout, time::Duration};
 
+use cotoba::Cotoba;
 use ratatui::{
     DefaultTerminal, Frame, Terminal, backend,
     crossterm::event::{self, Event, KeyCode, KeyEventKind, poll},
     layout::{Constraint, Direction, Layout},
-    text::Line,
+    widgets::List,
 };
 use ui::{
     add_word::{self, AddWord},
@@ -35,6 +36,7 @@ pub struct DictionaryApp<'a> {
     menu_state: Menu,
     main_selection: MainSelection<'a>,
     add_word: AddWord<'a>,
+    list: Vec<Cotoba>,
 }
 
 impl<'a> DictionaryApp<'a> {
@@ -45,6 +47,7 @@ impl<'a> DictionaryApp<'a> {
             menu_state: Menu::Menu,
             main_selection: MainSelection::default(),
             add_word: AddWord::new(),
+            list: vec![],
         })
     }
 
@@ -65,6 +68,7 @@ impl<'a> DictionaryApp<'a> {
                             main_selection,
                             &self.menu_state,
                             &mut self.add_word,
+                            &mut self.list,
                         )
                     })?;
 
@@ -87,6 +91,7 @@ fn render_main(
     main_selection: &mut MainSelection,
     menu_state: &Menu,
     add_word: &mut AddWord,
+    list: &mut Vec<Cotoba>,
 ) {
     // Render the main layout of the terminal interface, including the left and right sections of the UI.
 
@@ -115,16 +120,21 @@ fn render_main(
         _ => {}
     }
 
-    let line = Line::from(add_word.cotoba().get_word());
+    let items = list
+        .iter()
+        .map(|cotoba| cotoba.get_word())
+        .collect::<Vec<&str>>();
 
-    frame.render_widget(line, right_window[1]);
+    let list = List::new(items);
+
+    frame.render_widget(list, right_window[1]);
 }
 
 /*
 Handle all events for selections, states, exites
 */
 
-fn handle_events(dictionary: &mut DictionaryApp) -> Result<(), Box<dyn Error>> {
+fn handle_events<'a>(dictionary: &'a mut DictionaryApp) -> Result<(), Box<dyn Error>> {
     if poll(Duration::from_millis(100))? {
         match dictionary.menu_state {
             //handle events while the current state is Main Menu
@@ -174,10 +184,20 @@ fn handle_events(dictionary: &mut DictionaryApp) -> Result<(), Box<dyn Error>> {
             Menu::AddWord => match dictionary.add_word.get_menu() {
                 add_word::Menu::Exit => {
                     dictionary.main_selection.show_highlight();
-                    dictionary.menu_state = Menu::Menu
+                    dictionary.menu_state = Menu::Menu;
                 }
+
                 _ => {
                     dictionary.add_word.handle_events()?;
+
+                    /*
+                    list needs to push a new word once when a new cotoba has been created
+                    this needs to be fixed
+                     */
+                    if !dictionary.add_word.cotoba().get_word().is_empty() {
+                        dictionary.list.push(dictionary.add_word.cotoba().clone());
+                        dictionary.add_word.init();
+                    }
                 }
             },
 

@@ -30,7 +30,6 @@ pub struct AddWord<'a> {
     menu: ListState,
     list: List<'a>,
     menu_state: Menu,
-    input: [String; 3],
     word_area: TextArea<'a>,
     cotoba: Cotoba,
 }
@@ -43,10 +42,13 @@ impl<'a> AddWord<'a> {
                 .block(Block::bordered().title("言葉追加"))
                 .highlight_style(Style::new().reversed()),
             menu_state: Menu::Menu,
-            input: [String::new(), String::new(), String::new()],
             word_area: TextArea::default(),
-            cotoba: Cotoba::default(),
+            cotoba: Cotoba::new(),
         }
+    }
+
+    pub fn init(&mut self) {
+        self.cotoba = Cotoba::new();
     }
 
     fn clear_highlight(&mut self) {
