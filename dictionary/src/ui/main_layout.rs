@@ -24,7 +24,7 @@ impl<'a> MainLayout<'a> {
             layout: Layout::default()
                 .direction(ratatui::layout::Direction::Horizontal)
                 //LEFT WINDOW ---- RIGHT WINDOW
-                .constraints([Constraint::Percentage(40), Constraint::Fill(50)]),
+                .constraints([Constraint::Percentage(25), Constraint::Fill(50)]),
             area: Rc::new([Rect::new(0, 0, 0, 0)]),
         }
     }

@@ -32,7 +32,7 @@ impl Cotoba {
 
     pub fn set_reading(&mut self, reading: &str) {
         self.reading = reading
-            .split(",")
+            .split("　")
             .map(|str| str.trim().to_string())
             .collect();
     }

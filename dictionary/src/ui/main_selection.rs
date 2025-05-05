@@ -21,7 +21,7 @@ impl<'a> MainSelection<'a> {
                 .constraints([Constraint::Percentage(30), Constraint::Max(3)]),
             list: List::new(items).block(Block::new().borders(Borders::BOTTOM)).highlight_style(Style::new().reversed()),
             state: ListState::default().with_selected(Some(0)),
-            p1_placeholder: Paragraph::new("すみません今からは何もい動いていないです。\n「Ｑ」のボッタンを押すならプログラムを終了します。").wrap(Wrap { trim: true }),
+            p1_placeholder: Paragraph::new("すみません今からは何も動いていないです。\n「Ｑ」のボッタンを押すならプログラムを終了します。").wrap(Wrap { trim: true }),
         }
     }
 

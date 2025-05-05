@@ -113,7 +113,7 @@ fn render_main(
             //Right window draws the top of the stack only when called
             right_window = Layout::default()
                 .direction(Direction::Vertical)
-                .constraints([Constraint::Percentage(30), Constraint::Fill(10)])
+                .constraints([Constraint::Percentage(80), Constraint::Fill(10)])
                 .split(main_layout.right.inner(main_layout.area[1]));
             add_word.render(right_window.clone(), frame);
         }
@@ -194,10 +194,10 @@ fn handle_events<'a>(dictionary: &'a mut DictionaryApp) -> Result<(), Box<dyn Er
                     list needs to push a new word once when a new cotoba has been created
                     this needs to be fixed
                      */
-                    if !dictionary.add_word.cotoba().get_word().is_empty() {
-                        dictionary.list.push(dictionary.add_word.cotoba().clone());
-                        dictionary.add_word.init();
-                    }
+                    // if !dictionary.add_word.cotoba().get_word().is_empty() {
+                    //     dictionary.list.push(dictionary.add_word.cotoba().clone());
+                    //     dictionary.add_word.init();
+                    // }
                 }
             },
 
