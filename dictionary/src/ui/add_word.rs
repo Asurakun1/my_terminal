@@ -1,7 +1,7 @@
 use std::error::Error;
 use std::rc::Rc;
 
-use ratatui::crossterm::event::{KeyEvent, KeyModifiers, poll};
+use ratatui::crossterm::event::{KeyEvent, KeyModifiers};
 use ratatui::layout::Rect;
 use ratatui::widgets::{List, Paragraph, Wrap};
 use ratatui::{
@@ -11,7 +11,7 @@ use ratatui::{
     style::{Style, Stylize},
     widgets::{Block, ListState},
 };
-use tui_textarea::{Key, TextArea};
+use tui_textarea::TextArea;
 
 use crate::cotoba::Cotoba;
 
@@ -80,13 +80,22 @@ impl<'a> AddWord<'a> {
     pub fn render(&mut self, main_layout: Rc<[Rect]>, frame: &mut Frame) {
         let vertical_layout = Layout::new(
             Direction::Vertical,
-            [Constraint::Percentage(20), Constraint::Percentage(100)],
+            [Constraint::Percentage(30), Constraint::Percentage(100)],
         )
         .split(main_layout[0]);
 
         /*
         splits the layout into 2 parts
          */
+        self.render_upper_layer(frame, vertical_layout.clone());
+        self.render_lower_layer(frame, vertical_layout);
+    }
+
+    fn render_upper_layer(&mut self, frame: &mut Frame, vertical_layout: Rc<[Rect]>) {
+        /*
+        Render the upper layer
+         */
+
         let upper_layer = Layout::new(
             Direction::Horizontal,
             [Constraint::Max(25), Constraint::Fill(10)],
@@ -99,25 +108,26 @@ impl<'a> AddWord<'a> {
         frame.render_widget(&input_block, upper_layer[1]);
 
         self.render_line_state(frame, &input_block, &upper_layer);
+    }
 
+    fn render_lower_layer(&self, frame: &mut Frame, vertical_layout: Rc<[Rect]>) {
         /*
-        Lower Layer Render
+        Render the Lower Layer
          */
-
         let lower_layer = Layout::new(
             Direction::Vertical,
-            [Constraint::Percentage(20), Constraint::Percentage(80)],
+            [Constraint::Percentage(20), Constraint::Percentage(90)],
         )
         .split(vertical_layout[1]);
 
         let output_block = Block::bordered().title("出力");
 
         let cotoba_list = List::new([
-            format!("言葉：　{}", self.cotoba().get_word()),
+            format!("言葉　：{}", self.cotoba().get_word()),
             format!("読み方：{}", self.cotoba().get_reading().join("、"),),
         ]);
 
-        let definition = Paragraph::new(self.cotoba().get_definition())
+        let definition = Paragraph::new(format!("\n{}", self.cotoba().get_definition().join("\n")))
             .block(Block::new().title("定義："))
             .wrap(Wrap { trim: true });
 
@@ -187,10 +197,6 @@ impl<'a> AddWord<'a> {
                         self.cotoba.set_reading(&self.word_area.lines()[0]);
                     }
 
-                    Menu::Teigi => {
-                        self.cotoba.set_definition(&self.word_area.lines()[0]);
-                    }
-
                     _ => {}
                 }
 
@@ -243,8 +249,20 @@ impl<'a> AddWord<'a> {
                             _ => {}
                         },
 
-                        Menu::Cotoba | Menu::Yomikata | Menu::Teigi => {
+                        Menu::Cotoba | Menu::Yomikata => {
                             self.handle_inputs(key_code);
+                        }
+
+                        Menu::Teigi => {
+                            if key_code.code == KeyCode::Char('s')
+                                && key_code.modifiers.contains(KeyModifiers::CONTROL)
+                            {
+                                self.cotoba.set_definition(self.word_area.lines());
+                                self.menu_state = Menu::Menu;
+                                self.show_highlight();
+                            } else {
+                                self.word_area.input(key_code);
+                            }
                         }
 
                         _ => {}

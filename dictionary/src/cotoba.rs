@@ -2,7 +2,7 @@
 pub struct Cotoba {
     pub word: String,
     pub reading: Vec<String>,
-    pub definition: String,
+    pub definition: Vec<String>,
 }
 
 impl Cotoba {
@@ -10,7 +10,7 @@ impl Cotoba {
         Self {
             word: String::from(""),
             reading: vec![],
-            definition: String::from(""),
+            definition: vec![],
         }
     }
 
@@ -22,7 +22,7 @@ impl Cotoba {
         &self.reading
     }
 
-    pub fn get_definition(&self) -> &str {
+    pub fn get_definition(&self) -> &[String] {
         &self.definition
     }
 
@@ -37,7 +37,7 @@ impl Cotoba {
             .collect();
     }
 
-    pub fn set_definition(&mut self, definition: &str) {
-        self.definition = definition.to_string();
+    pub fn set_definition(&mut self, definition: &[String]) {
+        self.definition = definition.to_vec();
     }
 }

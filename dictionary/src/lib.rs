@@ -113,7 +113,7 @@ fn render_main(
             //Right window draws the top of the stack only when called
             right_window = Layout::default()
                 .direction(Direction::Vertical)
-                .constraints([Constraint::Percentage(80), Constraint::Fill(10)])
+                .constraints([Constraint::Percentage(90), Constraint::Fill(10)])
                 .split(main_layout.right.inner(main_layout.area[1]));
             add_word.render(right_window.clone(), frame);
         }
