@@ -5,7 +5,7 @@ use ratatui::{
     DefaultTerminal, Frame, Terminal, backend,
     crossterm::event::{self, Event, KeyCode, KeyEventKind, poll},
     layout::{Constraint, Direction, Layout},
-    widgets::List,
+    widgets::{Block, List},
 };
 use ui::{
     add_word::{self, AddWord},
@@ -14,6 +14,7 @@ use ui::{
 };
 
 mod cotoba;
+#[cfg(test)]
 mod tests;
 mod ui;
 
@@ -103,31 +104,28 @@ fn render_main(
     /*
     Right window is split into two parts vertically
      */
-    let mut right_window = Layout::default()
+    let right_window = Layout::default()
         .direction(Direction::Vertical)
-        .constraints([Constraint::Percentage(0), Constraint::Fill(10)])
+        .constraints([Constraint::Percentage(100)])
         .split(main_layout.right.inner(main_layout.area[1]));
 
     match menu_state {
         Menu::AddWord => {
-            //Right window draws the top of the stack only when called
-            right_window = Layout::default()
-                .direction(Direction::Vertical)
-                .constraints([Constraint::Percentage(90), Constraint::Fill(10)])
-                .split(main_layout.right.inner(main_layout.area[1]));
             add_word.render(right_window.clone(), frame);
+        }
+
+        Menu::Menu => {
+            let items = list
+                .iter()
+                .map(|cotoba| cotoba.get_word())
+                .collect::<Vec<&str>>();
+
+            let list = List::new(items);
+
+            frame.render_widget(list, right_window[0]);
         }
         _ => {}
     }
-
-    let items = list
-        .iter()
-        .map(|cotoba| cotoba.get_word())
-        .collect::<Vec<&str>>();
-
-    let list = List::new(items);
-
-    frame.render_widget(list, right_window[1]);
 }
 
 /*
@@ -160,7 +158,6 @@ fn handle_events<'a>(dictionary: &'a mut DictionaryApp) -> Result<(), Box<dyn Er
 
                                             dictionary.menu_state = Menu::AddWord;
                                             dictionary.add_word.set_menu(add_word::Menu::Menu);
-                                            dictionary.terminal.clear()?;
                                         }
 
                                         3 => dictionary.menu_state = Menu::Exit,
@@ -184,6 +181,13 @@ fn handle_events<'a>(dictionary: &'a mut DictionaryApp) -> Result<(), Box<dyn Er
             Menu::AddWord => match dictionary.add_word.get_menu() {
                 add_word::Menu::Exit => {
                     dictionary.main_selection.show_highlight();
+                    dictionary.menu_state = Menu::Menu;
+                }
+
+                add_word::Menu::Save => {
+                    dictionary.main_selection.show_highlight();
+                    dictionary.list.push(dictionary.add_word.cotoba().clone());
+                    dictionary.add_word.init();
                     dictionary.menu_state = Menu::Menu;
                 }
 

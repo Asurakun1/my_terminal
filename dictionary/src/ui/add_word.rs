@@ -3,6 +3,7 @@ use std::rc::Rc;
 
 use ratatui::crossterm::event::{KeyEvent, KeyModifiers};
 use ratatui::layout::Rect;
+use ratatui::style::Color;
 use ratatui::widgets::{List, Paragraph, Wrap};
 use ratatui::{
     Frame,
@@ -11,17 +12,18 @@ use ratatui::{
     style::{Style, Stylize},
     widgets::{Block, ListState},
 };
-use tui_textarea::TextArea;
+use tui_textarea::{CursorMove, Key, TextArea};
 
 use crate::cotoba::Cotoba;
 
-const ADD_WORD_MENU: [&str; 3] = ["言葉：　", "読み方：　", "定義：　"];
+const ADD_WORD_MENU: [&str; 4] = ["言葉：　", "読み方：　", "定義：　", "保存"];
 
 pub enum Menu {
     Menu,
     Cotoba,
     Yomikata,
     Teigi,
+    Save,
     Exit,
 }
 
@@ -30,6 +32,7 @@ pub struct AddWord<'a> {
     list: List<'a>,
     menu_state: Menu,
     word_area: TextArea<'a>,
+    definition: TextArea<'a>,
     cotoba: Cotoba,
 }
 
@@ -42,12 +45,22 @@ impl<'a> AddWord<'a> {
                 .highlight_style(Style::new().reversed()),
             menu_state: Menu::Menu,
             word_area: TextArea::default(),
+            definition: TextArea::default(),
             cotoba: Cotoba::new(),
         }
     }
 
     pub fn init(&mut self) {
         self.cotoba = Cotoba::new();
+        self.reset();
+    }
+
+    fn reset(&mut self) {
+        self.show_highlight();
+        self.menu.select_first();
+        self.menu_state = Menu::Menu;
+        self.word_area = TextArea::default();
+        self.definition = TextArea::default();
     }
 
     fn clear_highlight(&mut self) {
@@ -80,7 +93,7 @@ impl<'a> AddWord<'a> {
     pub fn render(&mut self, main_layout: Rc<[Rect]>, frame: &mut Frame) {
         let vertical_layout = Layout::new(
             Direction::Vertical,
-            [Constraint::Percentage(30), Constraint::Percentage(100)],
+            [Constraint::Percentage(20), Constraint::Percentage(100)],
         )
         .split(main_layout[0]);
 
@@ -110,7 +123,7 @@ impl<'a> AddWord<'a> {
         self.render_line_state(frame, &input_block, &upper_layer);
     }
 
-    fn render_lower_layer(&self, frame: &mut Frame, vertical_layout: Rc<[Rect]>) {
+    fn render_lower_layer(&mut self, frame: &mut Frame, vertical_layout: Rc<[Rect]>) {
         /*
         Render the Lower Layer
          */
@@ -120,21 +133,32 @@ impl<'a> AddWord<'a> {
         )
         .split(vertical_layout[1]);
 
-        let output_block = Block::bordered().title("出力");
+        let output_block = Block::bordered().title("言葉データ");
+
+        let def_layer = Layout::new(Direction::Horizontal, [Constraint::Percentage(100)])
+            .split(output_block.inner(lower_layer[1]));
 
         let cotoba_list = List::new([
             format!("言葉　：{}", self.cotoba().get_word()),
             format!("読み方：{}", self.cotoba().get_reading().join("、"),),
         ]);
 
-        let definition = Paragraph::new(format!("\n{}", self.cotoba().get_definition().join("\n")))
-            .block(Block::new().title("定義："))
-            .wrap(Wrap { trim: true });
+        let definition = Block::new().title("定義：");
+
+        match self.menu_state {
+            Menu::Teigi => {
+                self.definition.set_cursor_style(Style::new().reversed());
+            }
+            _ => {
+                self.definition.set_cursor_style(Style::new());
+            }
+        }
 
         frame.render_widget(&output_block, vertical_layout[1]);
 
         frame.render_widget(cotoba_list, output_block.inner(lower_layer[0]));
-        frame.render_widget(definition, output_block.inner(lower_layer[1]));
+        frame.render_widget(&definition, output_block.inner(lower_layer[1]));
+        frame.render_widget(&self.definition, definition.inner(def_layer[0]));
     }
 
     fn render_line_state(
@@ -144,8 +168,13 @@ impl<'a> AddWord<'a> {
         upper_layer: &Rc<[Rect]>,
     ) {
         match &self.menu_state {
-            Menu::Cotoba | Menu::Yomikata | Menu::Teigi => {
+            Menu::Cotoba | Menu::Yomikata => {
                 frame.render_widget(&self.word_area, input_block.inner(upper_layer[1]));
+            }
+
+            Menu::Teigi => {
+                let new_block = input_block.clone().dim();
+                frame.render_widget(&new_block, upper_layer[1]);
             }
 
             _ => {}
@@ -213,7 +242,7 @@ impl<'a> AddWord<'a> {
                 if key_code.kind == KeyEventKind::Press {
                     match self.menu_state {
                         /*
-                        handle events for the add word menu
+                        Menu state selection
                          */
                         Menu::Menu => match key_code.code {
                             KeyCode::Char('q') => self.menu_state = Menu::Exit,
@@ -227,19 +256,33 @@ impl<'a> AddWord<'a> {
 
                             KeyCode::Enter => {
                                 self.clear_highlight();
-                                self.word_area.set_cursor_line_style(Style::new());
 
+                                /*
+                                selects the given menu states
+                                 */
                                 match self.menu.selected().unwrap() {
                                     0 => {
                                         self.menu_state = Menu::Cotoba;
+                                        self.word_area =
+                                            TextArea::from(vec![self.cotoba().get_word()]);
                                     }
 
                                     1 => {
                                         self.menu_state = Menu::Yomikata;
+                                        self.word_area =
+                                            TextArea::from(self.cotoba().get_reading());
                                     }
 
                                     2 => {
                                         self.menu_state = Menu::Teigi;
+                                        self.word_area.set_cursor_style(Style::new());
+                                        self.definition =
+                                            TextArea::from(self.cotoba().get_definition());
+                                        self.definition.move_cursor(CursorMove::End);
+                                    }
+
+                                    3 => {
+                                        self.menu_state = Menu::Save;
                                     }
 
                                     _ => {}
@@ -254,14 +297,20 @@ impl<'a> AddWord<'a> {
                         }
 
                         Menu::Teigi => {
+                            if key_code.code == KeyCode::Char('z')
+                                && key_code.modifiers.contains(KeyModifiers::CONTROL)
+                            {
+                                self.definition.undo();
+                            }
+
                             if key_code.code == KeyCode::Char('s')
                                 && key_code.modifiers.contains(KeyModifiers::CONTROL)
                             {
-                                self.cotoba.set_definition(self.word_area.lines());
+                                self.cotoba.set_definition(self.definition.lines());
                                 self.menu_state = Menu::Menu;
                                 self.show_highlight();
                             } else {
-                                self.word_area.input(key_code);
+                                self.definition.input(key_code);
                             }
                         }
 
